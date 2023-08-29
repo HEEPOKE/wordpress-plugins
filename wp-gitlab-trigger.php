@@ -3,7 +3,7 @@
 Plugin Name: WP Gitlab Trigger
 Description: A plugin to Trigger your GitLab pipeline
 Version: 1.0
-Author: twinsyn
+Author: HEEPOKE
 */
 
 function gitlab_trigger_settings_menu()
