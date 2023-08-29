@@ -1,37 +1,145 @@
 <?php
 /*
-Plugin Name: Hook Pipeline Plugin
-Description: A plugin to Hook request using cURL.
+Plugin Name: WP Gitlab Trigger
+Description: A plugin to Trigger your GitLab pipeline
 Version: 1.0
-Author: HEEPOKE
+Author: twinsyn
 */
 
-add_action('save_post', 'curlRequest');
+function gitlab_trigger_settings_menu()
+{
+    add_options_page(
+        'GitLab Trigger',
+        'GitLab Trigger',
+        'manage_options',
+        'gitlab-trigger-settings',
+        'gitlab_trigger_page'
+    );
+}
+add_action('admin_menu', 'gitlab_trigger_settings_menu');
 
-function curlRequest() {
-    $apiUrl = '';
+function gitlab_trigger_submit()
+{
+    if (isset($_POST['submit'])) {
+        trigger_gitlab_api();
+    }
+}
+add_action('admin_init', 'gitlab_trigger_submit');
 
-    $curlOptions = array(
-        CURLOPT_URL => $apiUrl,
+function gitlab_token_callback()
+{
+    $gitlab_token = get_option('gitlab_token');
+    echo '<input type="text" name="gitlab_token" value="' . esc_attr($gitlab_token) . '" />';
+}
+
+function gitlab_brand_tag_callback()
+{
+    $brand_tag = get_option('gitlab_brand_tag');
+    echo '<input type="text" name="gitlab_brand_tag" value="' . esc_attr($brand_tag) . '" />';
+}
+
+function gitlab_project_id_callback()
+{
+    $project_id = get_option('gitlab_project_id');
+    echo '<input type="text" name="gitlab_project_id" value="' . esc_attr($project_id) . '" />';
+}
+
+function trigger_gitlab_api()
+{
+    $gitlab_token = get_option('gitlab_token');
+    $brand_tag = get_option('gitlab_brand_tag');
+    $project_id = get_option('gitlab_project_id');
+
+    $api_url = 'https://your-gitlab-url/api/v4/projects/' . $project_id . '/trigger/pipeline';
+
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => $api_url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query(array(
-            'token' => 'TOKEN',
-            'ref' => 'prod'
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_HTTPHEADER => array(
+            'PRIVATE-TOKEN: ' . $gitlab_token,
+            'Content-Type: application/json',
+        ),
+        CURLOPT_POSTFIELDS => json_encode(array(
+            'ref' => $brand_tag,
         )),
-        CURLOPT_FAILONERROR => true,
+    ));
+
+    curl_exec($curl);
+    $error = curl_error($curl);
+
+    curl_close($curl);
+
+    if ($error) {
+        echo 'cURL Error: ' . $error;
+    } else {
+        echo 'API Request Sent Successfully';
+    }
+}
+
+function gitlab_trigger_register_settings()
+{
+    add_settings_section(
+        'gitlab_trigger_section',
+        'GitLab Trigger Settings',
+        'gitlab_trigger_section_callback',
+        'gitlab-trigger-settings'
     );
 
-    $ch = curl_init();
-    curl_setopt_array($ch, $curlOptions);
+    add_settings_field(
+        'gitlab_token',
+        'GitLab Token',
+        'gitlab_token_callback',
+        'gitlab-trigger-settings',
+        'gitlab_trigger_section'
+    );
 
-    $response = curl_exec($ch);
+    add_settings_field(
+        'gitlab_brand_tag',
+        'Brand/Tag',
+        'gitlab_brand_tag_callback',
+        'gitlab-trigger-settings',
+        'gitlab_trigger_section'
+    );
 
-    if ($response === false) {
-        echo 'cURL Error: ' . curl_error($ch);
-    } else {
-        echo 'cURL Response: ' . $response;
-    }
+    add_settings_field(
+        'gitlab_project_id',
+        'Project ID',
+        'gitlab_project_id_callback',
+        'gitlab-trigger-settings',
+        'gitlab_trigger_section'
+    );
 
-    curl_close($ch);
+    register_setting(
+        'gitlab_trigger_settings_group',
+        'gitlab_token'
+    );
+
+    register_setting(
+        'gitlab_trigger_settings_group',
+        'gitlab_brand_tag'
+    );
+
+    register_setting(
+        'gitlab_trigger_settings_group',
+        'gitlab_project_id'
+    );
+}
+add_action('admin_init', 'gitlab_trigger_register_settings');
+
+function gitlab_trigger_page()
+{
+?>
+    <div class="wrap">
+        <h2>GitLab Trigger Settings</h2>
+        <form method="post" action="">
+            <?php
+            settings_fields('gitlab_trigger_settings_group');
+            do_settings_sections('gitlab-trigger-settings');
+            submit_button('Trigger GitLab');
+            ?>
+        </form>
+    </div>
+<?php
 }
