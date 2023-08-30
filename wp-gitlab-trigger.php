@@ -3,7 +3,7 @@
 Plugin Name: WP Gitlab Trigger
 Description: A plugin to Trigger your GitLab pipeline
 Version: 1.0
-Author: HEEPOKE
+Author: twinsyn
 */
 
 function gitlab_trigger_settings_menu()
@@ -16,7 +16,6 @@ function gitlab_trigger_settings_menu()
         'gitlab_trigger_page'
     );
 }
-add_action('admin_menu', 'gitlab_trigger_settings_menu');
 
 function gitlab_trigger_submit()
 {
@@ -24,7 +23,13 @@ function gitlab_trigger_submit()
         trigger_gitlab_api();
     }
 }
-add_action('admin_init', 'gitlab_trigger_submit');
+
+function gitlab_save_submit()
+{
+    if (isset($_POST['save_data'])) {
+        save_settings();
+    }
+}
 
 function gitlab_token_callback()
 {
@@ -44,45 +49,67 @@ function gitlab_project_id_callback()
     echo '<input type="text" name="gitlab_project_id" value="' . esc_attr($project_id) . '" />';
 }
 
+function save_settings()
+{
+    $gitlab_token = isset($_POST['gitlab_token']) ? sanitize_text_field($_POST['gitlab_token']) : get_option('gitlab_token');
+    $brand_tag = isset($_POST['gitlab_brand_tag']) ? sanitize_text_field($_POST['gitlab_brand_tag']) : get_option('gitlab_brand_tag');
+    $project_id = isset($_POST['gitlab_project_id']) ? sanitize_text_field($_POST['gitlab_project_id']) : get_option('gitlab_project_id');
+
+    update_option('gitlab_token', $gitlab_token);
+    update_option('gitlab_brand_tag', $brand_tag);
+    update_option('gitlab_project_id', $project_id);
+}
+
 function trigger_gitlab_api()
 {
     $gitlab_token = get_option('gitlab_token');
     $brand_tag = get_option('gitlab_brand_tag');
     $project_id = get_option('gitlab_project_id');
 
-    $api_url = 'https://your-gitlab-url/api/v4/projects/' . $project_id . '/trigger/pipeline';
+    if (!empty($gitlab_token)) {
+        $api_url = "https://gitlab.com/api/v4/projects/{$project_id}/trigger/pipeline?ref={$brand_tag}";
 
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => $api_url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CUSTOMREQUEST => 'POST',
-        CURLOPT_HTTPHEADER => array(
-            'PRIVATE-TOKEN: ' . $gitlab_token,
-            'Content-Type: application/json',
-        ),
-        CURLOPT_POSTFIELDS => json_encode(array(
-            'ref' => $brand_tag,
-        )),
-    ));
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $api_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt(
+            $ch,
+            CURLOPT_HTTPHEADER,
+            array(
+                'Content-Type: application/json',
+                'PRIVATE-TOKEN: ' . $gitlab_token
+            )
+        );
 
-    curl_exec($curl);
-    $error = curl_error($curl);
+        $response = array(
+            'response' => curl_exec($ch),
+            'error' => curl_error($ch)
+        );
 
-    curl_close($curl);
+        echo json_encode($response);
 
-    if ($error) {
-        echo 'cURL Error: ' . $error;
+        curl_close($ch);
     } else {
-        echo 'API Request Sent Successfully';
+        echo "GitLab token is missing or empty.";
     }
+}
+
+function gitlab_trigger_section_callback()
+{
+    echo '<p>Welcome to the GitLab Trigger settings section. Configure the plugin settings below:</p>';
+    echo '<ul>';
+    echo '<li><strong>GitLab Token:</strong> Enter your GitLab access token for authentication.</li>';
+    echo '<li><strong>Brand or Tag:</strong> Specify the brand or tag triggering the pipeline.</li>';
+    echo '<li><strong>Project ID:</strong> Provide the project ID for pipeline triggering.</li>';
+    echo '</ul>';
 }
 
 function gitlab_trigger_register_settings()
 {
     add_settings_section(
         'gitlab_trigger_section',
-        'GitLab Trigger Settings',
+        'GitLab Trigger Pipeline',
         'gitlab_trigger_section_callback',
         'gitlab-trigger-settings'
     );
@@ -97,7 +124,7 @@ function gitlab_trigger_register_settings()
 
     add_settings_field(
         'gitlab_brand_tag',
-        'Brand/Tag',
+        'Brand or Tag',
         'gitlab_brand_tag_callback',
         'gitlab-trigger-settings',
         'gitlab_trigger_section'
@@ -126,20 +153,36 @@ function gitlab_trigger_register_settings()
         'gitlab_project_id'
     );
 }
-add_action('admin_init', 'gitlab_trigger_register_settings');
 
 function gitlab_trigger_page()
 {
-?>
+    ?>
     <div class="wrap">
-        <h2>GitLab Trigger Settings</h2>
         <form method="post" action="">
             <?php
             settings_fields('gitlab_trigger_settings_group');
             do_settings_sections('gitlab-trigger-settings');
-            submit_button('Trigger GitLab');
+            gitlab_save_submit();
+            submit_button('Save', 'primary', 'save-data');
+            submit_button('Test Pipeline', 'primary', 'submit');
+            save_settings();
             ?>
         </form>
     </div>
-<?php
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const projectInput = document.querySelector('input[name="gitlab_project_id"]');
+
+            projectInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+        });
+    </script>
+    <?php
 }
+
+add_action('admin_menu', 'gitlab_trigger_settings_menu');
+add_action('admin_init', 'gitlab_save_submit');
+add_action('admin_init', 'gitlab_trigger_submit');
+add_action('admin_init', 'gitlab_trigger_register_settings');
+add_action('save_post', 'trigger_gitlab_api');
