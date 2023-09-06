@@ -2,8 +2,20 @@
 
 - WP Gitlab Trigger
 
-## Install
+## Install Wordpress
 
 ```bash
 docker compose up -d
+```
+
+## Install Dependencies
+
+```bash
+composer install && && composer dump-autoload
+```
+
+## Test
+
+```bash
+./vendor/bin/phpunit --coverage-text
 ```

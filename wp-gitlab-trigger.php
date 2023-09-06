@@ -4,42 +4,48 @@
 Plugin Name: WP Gitlab Trigger
 Description: A plugin to Trigger your GitLab pipeline
 Version: 1.0
-Author: HEEPOKE
+Author: twinsyn
 */
 
-class WpGitlabTrigger
+namespace App\WpGitlabTrigger;
+
+class WpTriggerPlugin
 {
     private static $instance = null;
     private $tableName;
 
-    private function __construct()
+    private function __construct($wpdb)
     {
-        global $wpdb;
-        $this->tableName = $wpdb->prefix . 'trigger_input';
-
-        add_action('admin_menu', array($this, 'addAdminMenu'));
-        add_action('admin_init', array($this, 'registerSettings'));
-        add_action('admin_init', array($this, 'gitlabTriggerSubmit'));
-        add_action('edit_post', array($this, 'triggerGitlabApi'));
+        if ($wpdb) {
+            $this->tableName = $wpdb->prefix . 'trigger_input';
+            add_action('admin_menu', array($this, 'addAdminMenu'));
+            add_action('admin_init', array($this, 'registerSettings'));
+            add_action('admin_init', array($this, 'gitlabTriggerSubmit'));
+            add_action('edit_post', array($this, 'triggerGitlabApi'));
+        }
     }
 
-    public static function getInstance()
+    public static function create($wpdb)
     {
         if (null === self::$instance) {
-            self::$instance = new self();
+            self::$instance = new self($wpdb);
         }
         return self::$instance;
     }
 
     public function addAdminMenu()
     {
-        add_options_page(
-            'GitLab Trigger',
-            'GitLab Trigger',
-            'manage_options',
-            'gitlab-trigger-settings',
-            array($this, 'settingsPage')
-        );
+        global $wpdb;
+
+        if ($wpdb) {
+            add_options_page(
+                'GitLab Trigger',
+                'GitLab Trigger',
+                'manage_options',
+                'gitlab-trigger-settings',
+                array($this, 'settingsPage')
+            );
+        }
     }
 
     public function registerSettings()
@@ -50,23 +56,29 @@ class WpGitlabTrigger
             'gitlab_project_id' => 'Project ID',
         );
 
-        add_settings_section(
-            'gitlab_trigger_section',
-            'GitLab Trigger Pipeline',
-            array($this, 'sectionCallback'),
-            'gitlab-trigger-settings'
-        );
+        global $wpdb;
 
-        foreach ($fields as $field => $label) {
-            add_settings_field(
-                $field,
-                $label,
-                array($this, 'fieldCallback'),
-                'gitlab-trigger-settings',
+        if ($wpdb) {
+            add_settings_section(
                 'gitlab_trigger_section',
-                array('field' => $field)
+                'GitLab Trigger Pipeline',
+                array($this, 'sectionCallback'),
+                'gitlab-trigger-settings'
             );
-            register_setting('gitlab_trigger_settings_group', $field);
+
+            if (is_array($fields)) {
+                foreach ($fields as $field => $label) {
+                    add_settings_field(
+                        $field,
+                        $label,
+                        array($this, 'fieldCallback'),
+                        'gitlab-trigger-settings',
+                        'gitlab_trigger_section',
+                        array('field' => $field)
+                    );
+                    register_setting('gitlab_trigger_settings_group', $field);
+                }
+            }
         }
     }
 
@@ -76,13 +88,22 @@ class WpGitlabTrigger
         <div class="wrap">
             <form method="post" action="">
                 <?php
-                settings_fields('gitlab_trigger_settings_group');
-                do_settings_sections('gitlab-trigger-settings');
+                global $wpdb;
+
+                if ($wpdb) {
+                    settings_fields('gitlab_trigger_settings_group');
+                    do_settings_sections('gitlab-trigger-settings');
+                }
                 ?>
 
                 <div class="button-group" style="display: flex; gap: 10px;">
-                    <?php submit_button('Save', 'primary', 'save-data'); ?>
-                    <?php submit_button('Test Pipeline', 'primary', 'submit'); ?>
+                    <?php
+                    if ($wpdb) {
+                        submit_button('Save', 'primary', 'save-data');
+                    } ?>
+                    <?php if ($wpdb) {
+                        submit_button('Test Pipeline', 'primary', 'submit');
+                    } ?>
                 </div>
                 <?php $this->saveSettings("test-pipeline"); ?>
             </form>
@@ -142,13 +163,14 @@ class WpGitlabTrigger
 
         $field_name = $args['field'];
 
-        $result = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT {$field_name} FROM {$this->tableName} ORDER BY id DESC LIMIT 1"
-            )
-        );
-
-        echo "<input type='text' id='{$field_name}'  name='{$field_name}' value='{$result}' />";
+        if ($wpdb) {
+            $result = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT {$field_name} FROM {$this->tableName} ORDER BY id DESC LIMIT 1"
+                )
+            );
+            echo "<input type='text' id='{$field_name}'  name='{$field_name}' value='{$result}' />";
+        }
     }
 
     public function saveSettings($check)
@@ -168,15 +190,18 @@ class WpGitlabTrigger
             $result = $wpdb->insert($this->tableName, $data);
 
             if ($result !== false && empty($check)) {
-                echo '<script>alert("Saved successfully"); window.location.reload();</script>';
+                wp_die('<script>alert("Saved successfully"); window.location.reload();</script>');
             } elseif (!empty($check)) {
-                echo '<script>window.location.reload();</script>';
+                wp_die('<script>window.location.reload();</script>');
             } else {
-                echo '<script>alert("Error saving");</script>';
+                wp_die('<script>alert("Error saving");</script>');
             }
         }
-        wp_die();
+        if ($wpdb) {
+            wp_die();
+        }
     }
+
 
     public function triggerGitlabApi()
     {
@@ -184,24 +209,26 @@ class WpGitlabTrigger
         $brand_tag = get_option('gitlab_brand_tag');
         $project_id = get_option('gitlab_project_id');
 
-        $api_url = "https://gitlab.com/api/v4/projects/{$project_id}/pipeline?ref={$brand_tag}";
+        if ($privateToken !== null && $brand_tag !== null && $project_id !== null) {
+            $api_url = "https://gitlab.com/api/v4/projects/{$project_id}/pipeline?ref={$brand_tag}";
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array("PRIVATE-TOKEN: $privateToken"));
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $api_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array("PRIVATE-TOKEN: $privateToken"));
 
-        $response = array(
-            'response' => curl_exec($ch),
-            'error' => curl_error($ch)
-        );
+            $response = array(
+                'response' => curl_exec($ch),
+                'error' => curl_error($ch)
+            );
 
-        if ($response['error']) {
-            echo '<script>alert("Error: ' . addslashes($response['error']) . '");</script>';
+            if ($response['error']) {
+                echo '<script>alert("Error: ' . addslashes($response['error']) . '");</script>';
+            }
+
+            curl_close($ch);
         }
-
-        curl_close($ch);
     }
 
     public function gitlabTriggerSubmit()
@@ -220,7 +247,7 @@ function wpGitlabTriggerActivation()
     $charset_collate = $wpdb->get_charset_collate();
 
     $sql = "CREATE TABLE $tableName (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        id int(11) NOT NULL AUTO_INCREMENT,
         gitlab_token varchar(255) NOT NULL,
         gitlab_brand_tag varchar(255) NOT NULL,
         gitlab_project_id varchar(255) NOT NULL,
@@ -232,5 +259,8 @@ function wpGitlabTriggerActivation()
     dbDelta($sql);
 }
 
-WpGitlabTrigger::getInstance();
-register_activation_hook(__FILE__, 'wpGitlabTriggerActivation');
+global $wpdb;
+WpTriggerPlugin::create($wpdb);
+if (function_exists('register_activation_hook')) {
+    register_activation_hook(__FILE__, 'wpGitlabTriggerActivation');
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="./bootstrap.php"
+         colors="true"
+         stopOnFailure="false"
+         backupGlobals="false">
+    <testsuites>
+        <testsuite name="WP-Gitlab-Trigger">
+            <directory suffix=".php">./tests/</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
