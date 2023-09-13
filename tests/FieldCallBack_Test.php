@@ -3,6 +3,10 @@
 use PHPUnit\Framework\TestCase;
 use App\WpGitlabTrigger\WpTriggerPlugin;
 
+/**
+ * @covers \App\WpGitlabTrigger\WpTriggerPlugin::create
+* @covers \App\WpGitlabTrigger\WpTriggerPlugin::fieldCallback
+*/
 class FieldCallBackTest extends TestCase
 {
     private $wpGitlabTrigger;

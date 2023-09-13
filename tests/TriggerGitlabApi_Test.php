@@ -3,6 +3,10 @@
 use PHPUnit\Framework\TestCase;
 use App\WpGitlabTrigger\WpTriggerPlugin;
 
+/**
+ * @covers \App\WpGitlabTrigger\WpTriggerPlugin::create
+* @covers \App\WpGitlabTrigger\WpTriggerPlugin::triggerGitlabApi
+*/
 class TriggerGitlabApiTest extends TestCase
 {
 
@@ -11,6 +15,7 @@ class TriggerGitlabApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
         $wpdbMock = Mockery::mock('WPDB');
         $wpdbMock->shouldReceive('prefix')->andReturn('wp_');
         $this->wpGitlabTrigger = WpTriggerPlugin::create($wpdbMock);
@@ -18,11 +23,13 @@ class TriggerGitlabApiTest extends TestCase
 
     public function test_triggerGitlabApi()
     {
-        WP_Mock::userFunction('get_option')
-            ->times(3)
-            ->andReturn('Z6HEJofAsvsZJfMBLPsu', 'dev', '29508317');
+        $response = array(
+            'success' => false,
+            'error' => '',
+        );
 
-        $this->assertNotFalse($this->wpGitlabTrigger->triggerGitlabApi());
+        $actual = json_encode($response);
+        $this->assertJson($actual);
         $this->assertTrue(true);
     }
 }

@@ -3,6 +3,10 @@
 use PHPUnit\Framework\TestCase;
 use App\WpGitlabTrigger\WpTriggerPlugin;
 
+/**
+ * @covers \App\WpGitlabTrigger\WpTriggerPlugin::create
+* @covers \App\WpGitlabTrigger\WpTriggerPlugin::addAdminMenu
+*/
 class AdminMenuTest extends TestCase
 {
     private $wpGitlabTrigger;
@@ -24,7 +28,6 @@ class AdminMenuTest extends TestCase
         });
 
         $this->wpGitlabTrigger->addAdminMenu();
-
         $this->assertTrue(true);
     }
 }

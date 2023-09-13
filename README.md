@@ -17,5 +17,5 @@ composer install && && composer dump-autoload
 ## Test
 
 ```bash
-./vendor/bin/phpunit --coverage-text
+XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-text
 ```

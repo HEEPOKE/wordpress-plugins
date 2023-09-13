@@ -3,6 +3,10 @@
 use PHPUnit\Framework\TestCase;
 use App\WpGitlabTrigger\WpTriggerPlugin;
 
+/**
+ * @covers \App\WpGitlabTrigger\WpTriggerPlugin::create
+* @covers \App\WpGitlabTrigger\WpTriggerPlugin::sectionCallBack
+*/
 class SectionCallBackTest extends TestCase
 {
     private $wpGitlabTrigger;

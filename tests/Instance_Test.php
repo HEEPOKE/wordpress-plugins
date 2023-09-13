@@ -3,6 +3,9 @@
 use PHPUnit\Framework\TestCase;
 use App\WpGitlabTrigger\WpTriggerPlugin;
 
+/**
+* @covers \App\WpGitlabTrigger\WpTriggerPlugin::create
+*/
 class InstanceTest extends TestCase
 {
     public function test_instance()
