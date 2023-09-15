@@ -4,7 +4,7 @@
 Plugin Name: WP Gitlab Trigger
 Description: A plugin to Trigger your GitLab pipeline
 Version: 1.0
-Author: twinsyn
+Author: HEEPOKE
 */
 
 namespace App\WpGitlabTrigger;
@@ -101,7 +101,7 @@ class WpTriggerPlugin
                 } ?>
                 <div class="button-group" style="display: flex; gap: 10px;">
                     <button type="submit" class="btn btn-primary" id="save-data" name="save-data">Save</button>
-                    <button id="testButton" type="button" class="btn btn-primary">Test-Pipeline</button>
+                    <button id="testButton" type="button" class="btn btn-secondary">Test Pipeline</button>
                     <button id="loadingButton" class="btn btn-primary d-none" type="button" disabled>
                         <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                         <span role="status">Loading...</span>
@@ -204,9 +204,9 @@ class WpTriggerPlugin
                     if (type === "success") {
                         Swal.fire({
                             title: 'Success!',
-                            text: 'Save Success',
                             icon: 'success',
-                            confirmButtonText: 'Ok'
+                            showConfirmButton: false,
+                            timer: 2000
                         }).then((res) => {
                             if (res.isConfirmed && !realod) {
                                 window.location.reload();
@@ -218,8 +218,8 @@ class WpTriggerPlugin
                             text: `Save Error: ${message}`,
                             icon: 'error',
                             showConfirmButton: false,
-                            showDenyButton: true,
-                            denyButtonText: 'Ok',
+                            showDenyButton: false,
+                            timer: 2000
                         }).then((res) => {
                             if (res.isDenied && !realod) {
                                 window.location.reload();
@@ -235,7 +235,7 @@ class WpTriggerPlugin
     public function sectionCallback()
     {
         echo '<p>Welcome to the GitLab Trigger settings section. Configure the plugin settings below:</p>';
-        echo '<ul>';
+        echo '<ul style="padding-left: 0">';
         echo '<li><strong>GitLab Token:</strong> Enter your GitLab access token for authentication.</li>';
         echo '<li><strong>Brand or Tag:</strong> Specify the brand or tag triggering the pipeline.</li>';
         echo '<li><strong>Project ID:</strong> Provide the project ID for pipeline triggering.</li>';
